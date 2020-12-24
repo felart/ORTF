@@ -17,7 +17,7 @@ Change samples rep in params
 * E2: scrobe in sample
 * E3: rate (-4 to 4)
 
-* K2: loop: start / end / reset
+* K2: loop ponts : start / end / reset
 * k3: jump to start
 
 * ALT is K1
