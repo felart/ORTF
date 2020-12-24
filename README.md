@@ -12,7 +12,7 @@ Change samples rep in params
 ## Controls
 * E1: radio station (sample)
 
-### Some lags may occur if you change too quicly (lots of softcut load/unload)
+#### Some lags may occur if you change too quicly (lots of softcut load/unload)
 
 * E2: scrobe in sample
 * E3: rate (-4 to 4)
