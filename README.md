@@ -10,7 +10,8 @@ Change samples rep in params
 (default is tape)
 
 ## Requirements
-$ norns
+* norns
+* MIDI controller (optional)
 
 
 ## Documentation
