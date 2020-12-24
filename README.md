@@ -1,7 +1,5 @@
 # ORTF
-Radio Music clone form Norns
-
-sort of Radio music clone
+Sort of Radio music clone
 each station is an audio file
 
 Change samples rep in params
