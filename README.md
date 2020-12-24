@@ -9,7 +9,11 @@ The idea is to treat your tape folder as a radio and navigate into it
 Change samples rep in params
 (default is tape)
 
-## Controls
+## Requirements
+$ norns
+
+
+## Documentation
 * E1: radio station (sample)
 
 #### Some lags may occur if you change too quicly (lots of softcut load/unload!)
