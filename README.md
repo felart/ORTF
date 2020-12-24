@@ -7,6 +7,7 @@ each station is an audio file
 Change samples rep in params
 (default is tape)
 
+## Controls
 E1 radio station
 E2 scrobe
 E3 rate (-4 to 4)
@@ -19,7 +20,7 @@ K1 + E2 adjust loop start
 K1 + E3 adjust loop end
 K1 + K3 saved  loop in tape (rate=1 only)
  
-MIDI CC
+## MIDI CC
 9:sample
 14 start
 15:end
