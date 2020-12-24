@@ -33,6 +33,8 @@ Change samples rep in params
  
 ## MIDI CC
 * 9:sample
+#### Some lags may occur if you change too quicly (lots of softcut load/unload!)
+
 * 14:start
 * 15:end
 * 20:rate
