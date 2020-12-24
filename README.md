@@ -11,6 +11,7 @@ Change samples rep in params
 
 ## Requirements
 * norns
+* samples in tape folder
 * MIDI controller (optional)
 
 
