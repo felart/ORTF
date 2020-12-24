@@ -2,7 +2,7 @@
 Sort of Radio music clone
 each station is an audio file
 
-![GitHub Logo](/images/ortf.png)
+![GitHub Logo](/ortf.png)
 
 Change samples rep in params
 (default is tape)
