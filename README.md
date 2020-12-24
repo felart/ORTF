@@ -17,5 +17,11 @@ k3 jump to start
 ALT is K1
 K1 + E2 adjust loop start
 K1 + E3 adjust loop end
-K1 + K3 saved  loop in tape
-
+K1 + K3 saved  loop in tape (rate=1 only)
+ 
+MIDI CC
+9:sample
+14 start
+15:end
+20:rate
+21:position
