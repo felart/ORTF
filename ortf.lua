@@ -16,17 +16,24 @@
 -- ALT is K1
 -- K1 + E2 adjust loop start
 -- K1 + E3 adjust loop end
--- K1 + K3 saved  loop in tape
---  
+-- K1 + K3 saved  loop in tape (rate=1 only)
+-- 
+-- 
+-- MIDI CC
+-- 9:sample
+-- 14 start
+-- 15:end
+-- 20:rate
+-- 21:position
 
---file = _path.dust.."code/softcut-studies/lib/whirl1.aif"
---file = _path.dust.."audio/tape/0023.wav"
 local fileselect = require "fileselect"
 
 file=nil
 
 rate = 1.0
-duration = 40.0
+duration = 30.0
+durationMax = 30.0
+
 
 durationLoop=10.0
 radioDirTab = nil
@@ -46,6 +53,22 @@ radioDirTab ={}
 rootDirectory=_path.dust.."audio/tape/"
 
 
+--intervals={1/2  , 2/3, 4/5,  1, 5/4, 3/2, 2}
+intervals={-4,-2,-3/2,-1,1,3/2,2,4}
+intervals={-1,-2/3,-0.5,0.5,2/3,1,3/2,2,4}
+
+
+currentGridx=1
+currentGridy=1
+
+xGridPos=9
+yGridPos=1
+
+absGridxy=1
+
+      encTimePrevious=util.time()
+
+
 alt= false
 
 firstSample=""
@@ -57,10 +80,11 @@ tab.print(m)
 m.event = function(data)
   local d = midi.to_msg(data)
   if d.type == "note_on" then
-    loopStarts[currentFileNdx] = 1
-    softcut.position(1,loopStarts[currentFileNdx])
-
+      currentFileNdx= util.round(d.note%#radioDirTab)+1
+      fileToRefresh = 1   
+      encTimePrevious=util.time()
   end
+ 
   
   if d.type == "cc" then
     if d.cc==9 then  
@@ -69,9 +93,11 @@ m.event = function(data)
     elseif d.cc==14 then  
       loopStarts[currentFileNdx] = durations[currentFileNdx]*d.val/127
       softcut.loop_start(1,loopStarts[currentFileNdx])
+      softcut.loop_start(2,loopStarts[currentFileNdx])
     elseif d.cc==15 then  
       loopEnds[currentFileNdx] = durations[currentFileNdx]*d.val/127
-      softcut.loop_end(1,loopEnds[currentFileNdx])    
+      softcut.loop_end(1,loopEnds[currentFileNdx])   
+      softcut.loop_end(2,loopEnds[currentFileNdx])    
     elseif d.cc==20 then  
       if d.val<=64 then
         rates[currentFileNdx]=(64-d.val)/64*-4
@@ -79,9 +105,15 @@ m.event = function(data)
         rates[currentFileNdx]=(d.val-64)/64*4
       end
       softcut.rate(1,rates[currentFileNdx])
+      softcut.rate(2,rates[currentFileNdx])
+
     elseif d.cc==21 then      
       positions[currentFileNdx] = durations[currentFileNdx]*d.val/127
-      softcut.position(1,positions[currentFileNdx])
+   --   softcut.position(1,positions[currentFileNdx])
+  --  positions[currentFileNdx] = util.clamp(positions[currentFileNdx]+delta,1,durations[currentFileNdx])
+
+      refreshPosition()
+      
     end  
   end
 end
@@ -105,7 +137,7 @@ function init()
   fileToRefresh=0
 
   counter = metro.init()
-  counter.time = 0.15
+  counter.time = 0.1
   counter.count = -1
   counter.event = refreshFile
   counter:start()
@@ -118,6 +150,13 @@ function init()
   counterPopup:start()
   
   
+  counterRefreshGrid= metro.init()
+  counterRefreshGrid.time = 0.05
+  counterRefreshGrid.count = -1
+  counterRefreshGrid.event = grid_redraw
+  counterRefreshGrid:start()
+  
+  
   showPopupFlg=0
   msgPopup=""
 
@@ -126,7 +165,7 @@ function init()
   
   softcut.event_phase(update_positions)
 
-  softcut.buffer_read_stereo(file,0,1,-1)
+  softcut.buffer_read_stereo(file,0,1,durationMax)
 
  -- softcut.phase_quant(1,0.0625)
   softcut.phase_quant(1,0.000625)
@@ -136,23 +175,43 @@ function init()
   
   -- enable voice 1
   softcut.enable(1,1)
+  softcut.enable(2,1)
+
   -- set voice 1 to buffer 1
   softcut.buffer(1,1)
+  softcut.buffer(2,2)
+
   -- set voice 1 level to 1.0
   softcut.level(1,1.0)
+  softcut.level(2,1.0)
+
   -- voice 1 enable loop
   softcut.loop(1,1)
+  softcut.loop(2,1)
+
   softcut.loop_start(1,1)
+  softcut.loop_start(21,1)
+
   softcut.loop_end(1,loopEnds[currentFileNdx])
+  softcut.loop_end(2,loopEnds[currentFileNdx])
+
   -- set voice 1 position to 1
   softcut.position(1,1)
+  softcut.position(2,1)
+
   -- set voice 1 rate to 1.0
   softcut.rate(1,1.0)
+  softcut.rate(2,1.0)
+
   -- enable voice 1 play
   --softcut.rate_slew_time(1,0.1)
  -- softcut.level_slew_time(1,2)
   softcut.fade_time(1,0.01)
+  softcut.fade_time(2,0.01)
+
   softcut.play(1,1)
+  softcut.play(2,1)
+
 end
 
 
@@ -235,20 +294,37 @@ function refreshSoftcut()
   softcut.buffer_clear()
   softcut.buffer_read_stereo(rootDirectory..files[currentFileNdx],0,1,-1)
   softcut.position(1,positions[currentFileNdx])
+  softcut.position(2,positions[currentFileNdx])
+
   softcut.rate(1,rates[currentFileNdx])
+  softcut.rate(2,rates[currentFileNdx])
+
  
   softcut.loop_start(1,loopStarts[currentFileNdx])
+  softcut.loop_start(2,loopStarts[currentFileNdx])
+
   softcut.loop_end(1,loopEnds[currentFileNdx])
+  softcut.loop_end(2,loopEnds[currentFileNdx])
+
+  
   softcut.play(1,1)
+  softcut.play(2,1)
+
 end
 
 function refreshFile()
   if fileToRefresh==1 then
-    file = rootDirectory..radioDirTab[currentFileNdx]
-    load_file(file)
-    refreshSoftcut()
+    print((util.time().." " .. encTimePrevious))
+    encElapsedDuration=util.time()-encTimePrevious
+    if(encElapsedDuration>0.05) then
+    
+      file = rootDirectory..radioDirTab[currentFileNdx]
+      load_file(file)
+      refreshSoftcut()
+      fileToRefresh = 0
+
+    end
   end
-  fileToRefresh = 0
   redraw()
 end
 
@@ -257,6 +333,7 @@ function enc(n,d)
     if (currentFileNdx+d)<= #radioDirTab and (currentFileNdx+d)>0 then
       currentFileNdx =  currentFileNdx + d
       fileToRefresh = 1
+      encTimePrevious=util.time()
     end
   elseif n==2 and alt==false then
     local delta =d/20
@@ -265,15 +342,45 @@ function enc(n,d)
       delta =delta + (d-1) * (loopEnds[currentFileNdx]/60)
     end
     positions[currentFileNdx] = util.clamp(positions[currentFileNdx]+delta,1,durations[currentFileNdx])
+    refreshPosition()
+  elseif n==3 and alt==false then
+    rates[currentFileNdx]= util.clamp(rates[currentFileNdx]+d/100,-4.0,4.0)
+    softcut.rate(1,rates[currentFileNdx])
+    softcut.rate(2,rates[currentFileNdx])
+
+  elseif n==2 and alt==true then
+    delta =d/100
+    loopStarts[currentFileNdx] = util.clamp(loopStarts[currentFileNdx]+delta,1,durations[currentFileNdx])
+    softcut.loop_start(1,loopStarts[currentFileNdx])
+    softcut.loop_start(2,loopStarts[currentFileNdx])
+
+  elseif n==3 and alt==true then   
+    delta =d/100
+    loopEnds[currentFileNdx] = util.clamp(loopEnds[currentFileNdx]+delta,1,durations[currentFileNdx])
+    softcut.loop_end(1,loopEnds[currentFileNdx])
+    softcut.loop_end(2,loopEnds[currentFileNdx])
+
+  end
+  redraw()
+end
+
+
+function refreshPosition()
     durationLoop=loopEnds[currentFileNdx]-loopStarts[currentFileNdx]
     softcut.position(1,positions[currentFileNdx])
+    softcut.position(2,positions[currentFileNdx])
+
 
     if positions[currentFileNdx]<loopStarts[currentFileNdx] then
       loopStarts[currentFileNdx]= positions[currentFileNdx]
       loopEnds[currentFileNdx]= loopStarts[currentFileNdx]+durationLoop
 
       softcut.loop_start(1,loopStarts[currentFileNdx])
+      softcut.loop_start(2,loopStarts[currentFileNdx])
+
       softcut.loop_end(1,loopEnds[currentFileNdx])
+      softcut.loop_end(2,loopEnds[currentFileNdx])
+
       
     elseif  positions[currentFileNdx]>loopEnds[currentFileNdx] then
       loopEnds[currentFileNdx]= positions[currentFileNdx]
@@ -281,21 +388,12 @@ function enc(n,d)
       loopStarts[currentFileNdx]= loopEnds[currentFileNdx]-durationLoop
 
       softcut.loop_start(1,loopStarts[currentFileNdx])
+      softcut.loop_start(2,loopStarts[currentFileNdx])
+
       softcut.loop_end(1,loopEnds[currentFileNdx])
+      softcut.loop_end(2,loopEnds[currentFileNdx])
+
     end
-  elseif n==3 and alt==false then
-    rates[currentFileNdx]= util.clamp(rates[currentFileNdx]+d/100,-4.0,4.0)
-    softcut.rate(1,rates[currentFileNdx])
-  elseif n==2 and alt==true then
-    delta =d/100
-    loopStarts[currentFileNdx] = util.clamp(loopStarts[currentFileNdx]+delta,1,durations[currentFileNdx])
-    softcut.loop_start(1,loopStarts[currentFileNdx])
-  elseif n==3 and alt==true then   
-    delta =d/100
-    loopEnds[currentFileNdx] = util.clamp(loopEnds[currentFileNdx]+delta,1,durations[currentFileNdx])
-    softcut.loop_end(1,loopEnds[currentFileNdx])
-  end
-  redraw()
 end
 
 
@@ -324,18 +422,27 @@ function key(n,z)
         
         statesKey2[currentFileNdx]='loop_end'
         softcut.loop_start(1,loopStarts[currentFileNdx])
+        softcut.loop_start(2,loopStarts[currentFileNdx])
+
         softcut.loop_end(1,loopEnds[currentFileNdx])
+        softcut.loop_end(2,loopEnds[currentFileNdx])
+
       elseif statesKey2[currentFileNdx]=='loop_end' then
         loopStarts[currentFileNdx] = 1
         loopEnds[currentFileNdx] = durations[currentFileNdx]
         statesKey2[currentFileNdx]='no_loop'
         softcut.loop_start(1,loopStarts[currentFileNdx])
+        softcut.loop_start(2,loopStarts[currentFileNdx])
+
         softcut.loop_end(1,loopEnds[currentFileNdx])
+        softcut.loop_end(2,loopEnds[currentFileNdx])
+
       end
     end
   elseif n == 3 and alt==false then
     if z == 1 then
       softcut.position(1,loopStarts[currentFileNdx])
+      softcut.position(2,loopStarts[currentFileNdx])
     end
   
   elseif n == 2 and alt==true then  
@@ -455,8 +562,10 @@ function drawLissajou()
   numberOfPoints = math.ceil(period * 2)
   angleStep = period / numberOfPoints
     
-  A=14*loopLength/durations[currentFileNdx]
-		
+  --A=14*loopLength/durations[currentFileNdx]
+  --A=14*(loopLength/durations[currentFileNdx]+0.5)
+  --A=14-(durations[currentFileNdx]-loopLength)/durations[currentFileNdx]*10
+
 	local phi = (globalPosition)*2*math.pi
 	local phi2 = (loopPosition*2*math.pi)
 	tglobal=	globalPosition*numberOfPoints
@@ -484,7 +593,7 @@ end
 function load_file(file)
   if util.file_exists(file) == true then
     local ch, samples, samplerate = audio.file_info(file)
-    duration = samples/samplerate
+    duration = math.min(samples,durationMax*samplerate)/samplerate
     local tmpLoaded=isloaded[currentFileNdx]
     
     if tmpLoaded ==0 then
